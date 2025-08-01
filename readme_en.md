@@ -32,7 +32,7 @@ git clone https://github.com/open-mmlab/mmdetection.git --branch v2.28.2 --depth
 
 If you want to bypass the export step, you can directly download the corresponding models from the [release](https://github.com/pleb631/fasterrcnn-onnx/releases/tag/v0.0.1). In this case, only basic packages such as `onnxruntime`, `opencv`, and `numpy` are required.
 
-## 模型导出
+## Export
 
 First, download the required weight file. MMDetection provides the corresponding [weights](https://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_1x_coco/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth), and place it in the `ckpt` directory.  
 Then, run the code.
@@ -70,7 +70,7 @@ There are two outputs:
 After model export, the outputs of the PyTorch version and the ONNX version will be automatically compared. If the difference between the corresponding outputs is less than `1e-4`, a total of 17 `True` values will be printed.  
 If any `False` appears, it is considered a significant accuracy loss and the export is deemed a failure.
 
-## Model Inference
+## Inference
 
 Ensure that the `ckpt` folder contains the exported ONNX files and that output verification has passed.  
 Then, run:
