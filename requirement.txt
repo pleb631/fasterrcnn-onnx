@@ -1,0 +1,8 @@
+torch==1.13.1
+torchvision==0.14.1
+onnx==1.17.0
+onnxruntime==1.19.2
+onnxsim
+opencv-python
+openmim==0.3.9
+numpy==1.24.4
