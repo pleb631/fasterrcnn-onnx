@@ -1,5 +1,7 @@
 # faster-rcnn 原生onnx导出和推理
 
+[english](readme_en.md)
+
 ## 说明
 
 本仓库存放了Faster R-CNN的导出onnx的代码，以及配套的推理代码。目标是打通mmdet训练+导出+推理的流程，代码可复用，并且要锁死版本确保可复现。
@@ -29,6 +31,8 @@ pip install mmdet==2.28.2
 git clone https://github.com/open-mmlab/mmdetection.git --branch v2.28.2 --depth 1
 
 ```
+
+如果想绕过导出步骤，可以直接从[release](https://github.com/pleb631/fasterrcnn-onnx/releases/tag/v0.0.1)下载相关模型，这样就只需要安装`onnxruntime、opencv、numpy`等基本包。
 
 ## 模型导出
 
