@@ -6,6 +6,10 @@ def softmax(x, axis=-1):
 
     f_x = np.exp(x) / np.sum(np.exp(x), axis=axis, keepdims=True)
     return f_x
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
 def roi_align(feat,boxes,stride,output_size=(7,7),aligned=True):
     import torchvision
     import torch
@@ -25,11 +29,11 @@ def map_roi_levels(rois, num_levels):
         - scale >= finest_scale * 8: level 3
 
         Args:
-            rois (Tensor): Input RoIs, shape (k, 5).
+            rois (np.ndarray): Input RoIs, shape (k, 5).
             num_levels (int): Total level number.
 
         Returns:
-            Tensor: Level index (0-based) of each RoI, shape (k, )
+            np.ndarray: Level index (0-based) of each RoI, shape (k, )
         """
         finest_scale = 56
         scale = np.sqrt(
@@ -92,7 +96,6 @@ def letterbox(
 
     r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
 
-    ratio = r, r  # width, height ratios
     new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
     dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  
     
@@ -106,7 +109,7 @@ def letterbox(
     im = cv2.copyMakeBorder(
         im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
     ) 
-    return im, ratio, (dw, dh)
+    return im, r, (dw, dh)
 
 def meshgrid(x, y, row_major=True):
     """Generate mesh grid of x and y.
@@ -128,11 +131,6 @@ def meshgrid(x, y, row_major=True):
     else:
         return yy, xx
     
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-
 
 def delta2bbox(rois,
                deltas,
@@ -201,8 +199,7 @@ class onnxModel:
         self.model2 = onnxruntime.InferenceSession(
             str(model2_path), providers=["CPUExecutionProvider"]
         )
-        
-        self.base_sizes = self.strides
+
         
         self.base_anchors = self.gen_base_anchors()
     
@@ -215,7 +212,7 @@ class onnxModel:
                 feature levels.
         """
         multi_level_base_anchors = []
-        for i, base_size in enumerate(self.base_sizes):
+        for base_size in self.strides:
             multi_level_base_anchors.append(
                 self.gen_single_level_base_anchors(
                     base_size,
@@ -241,7 +238,7 @@ class onnxModel:
                 related to a single feature grid. Defaults to None.
 
         Returns:
-            torch.Tensor: Anchors in a single-level feature maps.
+            np.ndarray: Anchors in a single-level feature maps.
         """
         w = base_size
         h = base_size
@@ -306,6 +303,11 @@ class onnxModel:
         # then (0, 1), (0, 2), ...
         return all_anchors
     def detect(self, bgr_img):
+        
+        score_thr = 0.25
+        
+        
+        
         image = bgr_img[:, :, ::-1].copy()
 
         
@@ -383,7 +385,7 @@ class onnxModel:
         
         w = proposals[:, 2] - proposals[:, 0]
         h = proposals[:, 3] - proposals[:, 1]
-        valid_mask = (w > 0) & (h > 0)&(scores > 0.85)
+        valid_mask = (w > 0) & (h > 0)&(scores > score_thr)
         if not valid_mask.all():
             proposals = proposals[valid_mask]
             scores = scores[valid_mask]
@@ -393,8 +395,9 @@ class onnxModel:
             proposals = proposals[i]
             scores = scores[i]
         
-        if proposals.size > 0:
             dets = np.concatenate((proposals,scores.reshape(-1,1)),axis=-1)
+        else:
+            return np.empty((0, 5), dtype=np.float32)
 
         
         num_levels = 4
@@ -424,23 +427,26 @@ class onnxModel:
         
         bboxes = bboxes.reshape(-1, 4)
         scores = cls_score[:,:-1].reshape(-1)
-        score_thr = 0.25
+        
         valid_mask = scores > score_thr
 
 
         inds = np.nonzero(valid_mask.astype(int))
         bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
         
-        
+        if bboxes.shape[0] == 0:
+            return np.empty((0, 5), dtype=np.float32)
+
+
         i = nms(bboxes,scores)
         bboxes = bboxes[i]
         scores = scores[i]
         labels = labels[i]
-        
-        
-        dets  = np.concatenate((bboxes/r[0],scores.reshape(-1,1),labels.reshape(-1,1)),axis=-1)
-        
-        
+
+
+        dets  = np.concatenate((bboxes/r,scores.reshape(-1,1),labels.reshape(-1,1)),axis=-1)
+
+
         return dets
 
 
